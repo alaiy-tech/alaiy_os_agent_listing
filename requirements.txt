@@ -1,0 +1,11 @@
+# NEVER list "frappe" here: frappe is the host framework, not a dependency.
+#
+# Nothing else, deliberately. This app talks to alaiy_os and to whichever channel
+# adapters are installed, and the only network call it makes itself is fetching a
+# product photo so the model can look at it — which uses `requests`, already
+# guaranteed by frappe.
+#
+# Everything expensive belongs to a channel: a marketplace SDK, an image store's
+# boto3, an LLM provider's client. Those are its connector's dependencies, not
+# this app's, and that is what keeps the agent installable on a bench with no
+# sales channel at all.
