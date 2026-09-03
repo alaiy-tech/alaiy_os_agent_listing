@@ -1,0 +1,119 @@
+{
+ "type": "object",
+ "additionalProperties": true,
+ "properties": {
+  "channel": {
+   "type": "string",
+   "description": "The channel this listing was written for, exactly as get_channel_spec returned it."
+  },
+  "title": {
+   "type": "string",
+   "minLength": 1,
+   "description": "The product title. Every channel wants one; what it must look like — its length, its structure, whether it carries the brand — differs per channel and is given to you by get_channel_spec. Follow that, not a general instinct about titles."
+  },
+  "description": {
+   "type": "string",
+   "minLength": 1,
+   "description": "The product description, as plain text unless get_channel_spec says otherwise. Never invent a specification: state a material, measurement, capacity, certification or country of origin only when the product data, the admin's notes, or a photo actually shows it."
+  },
+  "images": {
+   "type": "array",
+   "description": "Whatever the image step returned, copied VERBATIM and in the order it returned them, each entry's own fields included. An empty array when the channel has no image step, when the product has no photos, or when the per-request image toggle was off — all three are normal. A null `url` is expected and means the image is being rendered in the background after this run; it is not a failure, does not belong in needs_review, and must not be retried.",
+   "items": {
+    "type": "object",
+    "additionalProperties": true
+   }
+  },
+  "needs_review": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Human-readable names of the fields you could NOT confidently fill, for the admin to complete before publish (e.g. 'Material', 'Bullet 5', 'Search Terms'). This and `notes` are how you report uncertainty — use them instead of guessing."
+  },
+  "confidence": {
+   "type": "string",
+   "enum": [
+    "high",
+    "medium",
+    "low"
+   ],
+   "description": "Overall confidence in this enrichment, given the quality of the source data and photos."
+  },
+  "notes": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Anything the admin should know: assumptions you made, ambiguities, what substantiates a claim that would otherwise be restricted, conflicts between the product text and its photos, or a step this channel does not support."
+  },
+  "diagnosis": {
+   "type": "object",
+   "additionalProperties": false,
+   "description": "What was wrong with this listing on the channel, and what you did about it. Fill this whenever get_listing_health reported open issues; leave it out entirely when it reported none or the channel does not support health checks.",
+   "properties": {
+    "issues_addressed": {
+     "type": "array",
+     "description": "The issues this enrichment actually fixes — one entry per issue, naming what was wrong and what you changed. Only issues whose cause is content you produce.",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+       "code": {
+        "type": "string",
+        "description": "The channel's own issue code, copied verbatim from get_listing_health."
+       },
+       "field": {
+        "type": "string",
+        "description": "The field the issue named, or the one you changed to resolve it."
+       },
+       "what_was_wrong": {
+        "type": "string",
+        "description": "Why the channel rejected or suppressed it, in a sentence a merchant would understand."
+       },
+       "what_changed": {
+        "type": "string",
+        "description": "What you did differently in this enrichment to resolve it."
+       }
+      },
+      "required": [
+       "code",
+       "what_was_wrong",
+       "what_changed"
+      ]
+     }
+    },
+    "issues_for_admin": {
+     "type": "array",
+     "description": "Issues you cannot fix because they are not about listing content — pricing, inventory, category approval, compliance documents, account status. Report them; never guess at them.",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+       "code": {
+        "type": "string",
+        "description": "The channel's own issue code, copied verbatim."
+       },
+       "why": {
+        "type": "string",
+        "description": "What the admin has to do about it, in a sentence."
+       }
+      },
+      "required": [
+       "code",
+       "why"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "required": [
+  "channel",
+  "title",
+  "description",
+  "images",
+  "needs_review",
+  "confidence"
+ ]
+}
