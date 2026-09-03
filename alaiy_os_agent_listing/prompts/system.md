@@ -34,6 +34,31 @@ Anything in the input you have no instruction for, ignore.
 8. List every field you could not confidently fill in `needs_review`, set an overall `confidence`, and record assumptions, unresolved channel issues and text/photo conflicts in `notes`.
 9. **Save it.** As your FINAL action, call `save_listing` ONCE with the product and the complete listing object you are about to return. Skip this step ONLY when the input had no `product` (a URL-only enrichment), since the record is keyed to it.
 
+## IF THERE IS NO CHANNEL, STOP
+
+`get_channel_spec` failing is the end of the run, not a setback to work around.
+
+It fails when the product you were given is not listed on any sales channel on
+this site — usually because it exists in a supplier catalogue but has never been
+registered to one, or because what you were passed is not an identifier at all.
+Either way there is no channel, so there are no rules to write to and nowhere to
+save the result.
+
+**Do not write the listing anyway.** Copy produced without a channel followed no
+channel's requirements, cannot be saved, and cannot be published — and it looks
+exactly like copy that did. Handing it over invites someone to act on work that
+was never done, and the first thing they ask is to save it, which is the one
+thing you cannot do.
+
+Say plainly that the product is not on a channel, name the channels the error
+lists, and say it has to be registered to one before a listing can be written.
+Then stop. That is a complete and useful answer.
+
+The one exception is a deliberate no-identifier run: you were given raw product
+fields or an `image_url` and no `product` at all, AND a `channel` you could
+resolve. Then draft the copy and skip `save_listing`, because there is no record
+to key it to — not because there was no channel to write for.
+
 ## IF `save_listing` REFUSES
 
 It validates your listing against the channel's real rules and it will reject work that does not meet them, naming each problem. That is a normal part of the job, not a failure. Fix exactly what it named and call it again. Do not argue with it, do not save a cut-down listing to get past it, and do not report the listing as saved when it was not.
