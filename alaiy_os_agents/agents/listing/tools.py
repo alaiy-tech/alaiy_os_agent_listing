@@ -27,7 +27,7 @@ import os
 
 import frappe
 
-from alaiy_os_agent_listing import channels
+from alaiy_os_agents.agents.listing import channels
 
 #: Some product-photo CDNs refuse a request with no browser-like User-Agent, so
 #: an external image is always fetched here rather than handed to the provider as
@@ -89,6 +89,7 @@ def get_channel_spec(channel=None, product=None):
 		# does not exist and then report it as a failure.
 		"has_image_step": bool((adapter.get("handlers") or {}).get("prepare_images")),
 		"has_health_check": bool((adapter.get("handlers") or {}).get("health")),
+		"can_register": bool((adapter.get("handlers") or {}).get("register")),
 	}
 
 
@@ -223,6 +224,47 @@ def prepare_images(product=None, channel=None, prepare_images=False, image_urls=
 			),
 		}
 	return fn(product=product, enabled=bool(prepare_images), image_urls=image_urls or None)
+
+
+# ── putting a product on a channel ────────────────────────────────────────────
+
+
+def register_product(product, channel=None):
+	"""Give a catalogue product a listing record on a channel, so it can be enriched.
+
+	The gap this closes: supplier connectors fill the catalogue with products, and
+	a sales channel keys everything to its own listing record. A product sourced
+	from a supplier therefore has nothing for an enrichment to be written onto, and
+	`get_channel_spec` refuses — correctly, but as a dead end. This is the hop.
+
+	**Local only. Nothing is sent to the channel.** It creates the record that
+	makes the product enrichable, in whatever "not live yet" state that channel
+	uses. Publishing remains a separate, deliberate act on an enrichment a person
+	has reviewed, and nothing here brings it closer to happening.
+
+	Idempotent by contract: a product that already has a record gets that record
+	back, unchanged. Registering never edits an existing listing — what the channel
+	already holds beats anything the catalogue can offer.
+	"""
+	if not channel:
+		# Not resolved from the product: the whole reason to be in this function is
+		# that the product resolves to nothing yet. Where exactly one channel can
+		# register, that is not a choice worth asking about; where several can, it
+		# is the user's to make and not ours to guess.
+		options = channels.registrable()
+		if not options:
+			frappe.throw(
+				"No channel on this site can register a product. It has to be listed "
+				"on a channel by other means before a listing can be written."
+			)
+		if len(options) > 1:
+			frappe.throw(
+				"Say which channel to register it on: " + ", ".join(sorted(options)) + "."
+			)
+		channel = next(iter(options))
+
+	adapter = channels.get(channel)
+	return channels.require(adapter, "register")(product=product)
 
 
 # ── writing it down ───────────────────────────────────────────────────────────

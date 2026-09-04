@@ -36,7 +36,8 @@ from pathlib import Path
 
 import frappe
 
-_APP = "alaiy_os_agent_listing"
+_APP = "alaiy_os_agents"
+_PKG = f"{_APP}.agents.listing"
 _APP_DIR = Path(__file__).resolve().parent
 
 # Where a customer app puts its override, relative to its own package directory.
@@ -74,7 +75,7 @@ DEFAULT_DESCRIPTION = (
 BASE_PROMPT = read_text("prompts/system.md")
 BASE_SCHEMA = json.loads(read_text("schemas/output.json"))
 
-_HANDLERS = f"{_APP}.tools.handlers"
+_HANDLERS = f"{_PKG}.tools"
 
 # What the user types after the slash in Ask Alaiy, and the arguments behind it.
 SKILL_SLUG = "listing"
@@ -291,6 +292,34 @@ TOOL_CATALOG = {
 			},
 		},
 	},
+	"register_product": {
+		"description": (
+			"Put a catalogue product onto a sales channel, so there is a listing "
+			"record for it to be enriched onto. Call this ONLY when "
+			"get_channel_spec or get_product told you the product is in the "
+			"catalogue but not on any channel — that message says so explicitly, "
+			"and names the channels that can register it. Do not call it "
+			"speculatively; a product that already has a listing does not need it. "
+			"**Nothing is sent to the channel.** It creates a local record in a "
+			"not-live state, which is what makes the product enrichable; whether "
+			"the listing is ever published stays a separate decision someone makes "
+			"after reviewing the enrichment. After it returns, carry straight on "
+			"with get_channel_spec and the rest of the workflow for the product it "
+			"names — that identifier is the one to use from then on."
+		),
+		"handler": f"{_HANDLERS}.register_product",
+		"parameters_schema": {
+			"type": "object",
+			"properties": {
+				"product": {
+					"type": "string",
+					"description": "The catalogue product identifier to put on a channel.",
+				},
+				"channel": _CHANNEL_ARG,
+			},
+			"required": ["product"],
+		},
+	},
 	"save_listing": {
 		"description": (
 			"Validate the finished listing against this channel's real rules and, if "
@@ -436,6 +465,12 @@ def build_agent_meta():
 		"skill_label": SKILL_LABEL,
 		"input_schema": INPUT_SCHEMA,
 		"tools": tools,
+		# Which of those tools change something. Named here rather than inferred,
+		# because only this agent knows: `save_listing` writes the enrichment and
+		# `register_product` creates the record it is written onto. registry.py
+		# marks them `effect: write`, which keeps them off Ask Alaiy's
+		# directly-callable surface.
+		"writes": ("save_listing", "register_product"),
 		# A consequence of the tools, not a separate declaration.
 		"input_options": [t["input_option"] for t in tools if t.get("input_option")],
 		# Not a registry field; useful to whoever is debugging why a prompt looks the

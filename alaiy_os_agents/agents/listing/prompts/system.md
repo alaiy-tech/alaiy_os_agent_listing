@@ -34,15 +34,22 @@ Anything in the input you have no instruction for, ignore.
 8. List every field you could not confidently fill in `needs_review`, set an overall `confidence`, and record assumptions, unresolved channel issues and text/photo conflicts in `notes`.
 9. **Save it.** As your FINAL action, call `save_listing` ONCE with the product and the complete listing object you are about to return. Skip this step ONLY when the input had no `product` (a URL-only enrichment), since the record is keyed to it.
 
-## IF THERE IS NO CHANNEL, STOP
+## IF THERE IS NO CHANNEL
 
-`get_channel_spec` failing is the end of the run, not a setback to work around.
+`get_channel_spec` failing means the product is not on a sales channel, so there
+are no rules to write to and nowhere to save a result. What to do next depends on
+which of two things the message tells you.
 
-It fails when the product you were given is not listed on any sales channel on
-this site — usually because it exists in a supplier catalogue but has never been
-registered to one, or because what you were passed is not an identifier at all.
-Either way there is no channel, so there are no rules to write to and nowhere to
-save the result.
+**It is a catalogue product that has never been put on a channel.** The message
+says so and names the channels that can take it. Call `register_product`, then
+carry on from step 1 with the identifier it returns. This is the ordinary way a
+product sourced from a supplier becomes a listing, and it is local — nothing is
+sent to the channel, and publishing stays a separate decision made after someone
+reviews your enrichment.
+
+**It is not a product here at all.** Then the identifier is wrong, or the thing
+you were given was never an identifier — raw product text, a title, a blob of
+JSON. Say so and stop; there is nothing to register.
 
 **Do not write the listing anyway.** Copy produced without a channel followed no
 channel's requirements, cannot be saved, and cannot be published — and it looks

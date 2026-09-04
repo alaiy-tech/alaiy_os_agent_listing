@@ -9,12 +9,12 @@ with open("requirements.txt") as f:
         if line.strip() and not line.strip().startswith("#")
     ]
 
-from alaiy_os_agent_listing import __version__ as version
+from alaiy_os_agents import __version__ as version
 
 setup(
-    name="alaiy_os_agent_listing",
+    name="alaiy_os_agents",
     version=version,
-    description="The listing agent for Alaiy OS — one agent, whichever sales channels the site has.",
+    description="The default agents Alaiy OS ships — installed everywhere, each enabled per site.",
     author="Alaiy",
     author_email="mail@alaiy.com",
     packages=find_packages(),

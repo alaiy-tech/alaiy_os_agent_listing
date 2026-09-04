@@ -180,17 +180,59 @@ def resolve(product, channel=None):
 	if len(hits) == 1:
 		return hits[0]
 	if not hits:
-		frappe.throw(
-			f"'{product}' is not listed on any channel on this site "
-			f"({', '.join(sorted(adapters))}). Check the identifier, or register "
-			"the product on a channel first.",
-			exc=ChannelError,
-		)
+		frappe.throw(_not_listed(product, adapters), exc=ChannelError)
 	frappe.throw(
 		f"'{product}' is listed on more than one channel "
 		f"({', '.join(sorted(a['channel'] for a in hits))}). Say which one to "
 		"write for.",
 		exc=ChannelError,
+	)
+
+
+def registrable(adapters=None):
+	"""The channels that can put a catalogue product on themselves, by id.
+
+	A supplier connector fills the catalogue with ERPNext Items; a sales channel
+	keys everything to its own listing record. `register` is the hop between them,
+	and it is optional because not every channel has one to offer.
+	"""
+	adapters = sources() if adapters is None else adapters
+	return {
+		channel: adapter
+		for channel, adapter in adapters.items()
+		if (adapter.get("handlers") or {}).get("register")
+	}
+
+
+def _not_listed(product, adapters):
+	"""Why this identifier resolved to nothing — and what to do about it.
+
+	Two very different situations wear the same error. A typo is a dead end. A
+	real catalogue product that has simply never been put on a channel is one step
+	from working, and saying so is the difference between a run that stops and a
+	run that continues: an agent told only "not listed" reports a dead end, and the
+	person who asked is left to work out that registration is a thing.
+	"""
+	known = frappe.db.exists("Item", product)
+	can_register = registrable(adapters)
+
+	if known and can_register:
+		return (
+			f"'{product}' is a product in this catalogue but is not on any sales "
+			f"channel yet, so there is nothing to write a listing onto. Put it on "
+			f"one first with register_product — {', '.join(sorted(can_register))} "
+			f"can do that — then carry on."
+		)
+	if known:
+		return (
+			f"'{product}' is a product in this catalogue but is not on any sales "
+			f"channel, and no channel here can register it. It has to be listed on "
+			"a channel before a listing can be written for it."
+		)
+	return (
+		f"'{product}' is not listed on any channel on this site "
+		f"({', '.join(sorted(adapters))}), and is not a product in this catalogue "
+		"either. Check the identifier."
 	)
 
 
