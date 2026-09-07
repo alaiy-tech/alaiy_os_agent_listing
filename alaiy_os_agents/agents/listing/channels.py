@@ -75,6 +75,8 @@ empty rather than being invented.
 
 import frappe
 
+from alaiy_os.engine.executor import ToolStop
+
 HOOK = "listing_channels"
 
 #: Handlers an adapter cannot omit. Without `get_product` there is nothing to
@@ -86,6 +88,36 @@ REQUIRED_HANDLERS = ("get_product", "save_listing")
 
 class ChannelError(frappe.ValidationError):
 	"""A channel could not be loaded or resolved. Never swallowed."""
+
+
+class NoChannel(ChannelError, ToolStop):
+	"""There is no channel to write for, and nothing this run can do about it.
+
+	Most of what goes wrong here is the model's to fix, and stays an ordinary
+	`ChannelError` for that reason: a channel id that does not exist comes back
+	naming the ones that do, a catalogue product that is on no channel comes back
+	naming `register_product`, an identifier on two channels comes back asking
+	which. Each of those is a tool error the model reads and acts on, and the run
+	carries on — which is the whole correction loop and worth keeping.
+
+	These two are different. No connector installed means there is no channel on
+	this site at all; an identifier that matches no listing and no catalogue row
+	means there is nothing to write about. Neither has a next tool call, and being
+	`ToolStop` ends the run at the tool rather than handing the model a dead end
+	while its output schema still demands a listing — which is what produced a
+	"listing" titled "Product not found" instead of an answer.
+	"""
+
+
+#: `get` and `resolve` both reach it, so it is written once. Phrased as the whole
+#: answer rather than a diagnostic: it is relayed verbatim to whoever asked, by
+#: whichever surface ran the agent.
+NO_CHANNEL = (
+	"There is no way I can generate a listing for this, because no sales channel "
+	"connector is installed and enabled on this site — there is nothing to write a "
+	"listing for and nowhere to save one. Install and enable a channel connector "
+	"first."
+)
 
 
 def sources():
@@ -131,11 +163,7 @@ def get(channel):
 	"""One adapter by channel id, or throw naming what is available."""
 	adapters = sources()
 	if not adapters:
-		frappe.throw(
-			"No sales channel is set up on this site, so there is nothing to write a "
-			"listing for. Install and enable a channel connector first.",
-			exc=ChannelError,
-		)
+		raise NoChannel(NO_CHANNEL)
 	if channel not in adapters:
 		frappe.throw(
 			f"There is no '{channel}' channel on this site. Available: "
@@ -164,11 +192,7 @@ def resolve(product, channel=None):
 
 	adapters = sources()
 	if not adapters:
-		frappe.throw(
-			"No sales channel is set up on this site, so there is nothing to write a "
-			"listing for. Install and enable a channel connector first.",
-			exc=ChannelError,
-		)
+		raise NoChannel(NO_CHANNEL)
 
 	hits = [
 		adapter
@@ -180,7 +204,8 @@ def resolve(product, channel=None):
 	if len(hits) == 1:
 		return hits[0]
 	if not hits:
-		frappe.throw(_not_listed(product, adapters), exc=ChannelError)
+		message, error = _not_listed(product, adapters)
+		raise error(message)
 	frappe.throw(
 		f"'{product}' is listed on more than one channel "
 		f"({', '.join(sorted(a['channel'] for a in hits))}). Say which one to "
@@ -212,6 +237,12 @@ def _not_listed(product, adapters):
 	from working, and saying so is the difference between a run that stops and a
 	run that continues: an agent told only "not listed" reports a dead end, and the
 	person who asked is left to work out that registration is a thing.
+
+	Returns `(message, error class)`, because that difference is also the
+	difference between a tool error and the end of the run. Only the registrable
+	case has a next move, so only it stays a `ChannelError` the model can act on;
+	the other two are `NoChannel` and stop the run with no output. Deciding it here
+	rather than at the raise keeps one place that knows which situation this is.
 	"""
 	known = frappe.db.exists("Item", product)
 	can_register = registrable(adapters)
@@ -222,18 +253,19 @@ def _not_listed(product, adapters):
 			f"channel yet, so there is nothing to write a listing onto. Put it on "
 			f"one first with register_product — {', '.join(sorted(can_register))} "
 			f"can do that — then carry on."
-		)
+		), ChannelError
 	if known:
 		return (
 			f"'{product}' is a product in this catalogue but is not on any sales "
 			f"channel, and no channel here can register it. It has to be listed on "
 			"a channel before a listing can be written for it."
-		)
+		), NoChannel
 	return (
-		f"'{product}' is not listed on any channel on this site "
-		f"({', '.join(sorted(adapters))}), and is not a product in this catalogue "
-		"either. Check the identifier."
-	)
+		f"There is no way I can generate a listing for '{product}': it is not "
+		f"listed on any channel on this site ({', '.join(sorted(adapters))}), and "
+		"is not a product in this catalogue either. Check the identifier — it has "
+		"to be the code alone, not a product name."
+	), NoChannel
 
 
 def handler(adapter, name):

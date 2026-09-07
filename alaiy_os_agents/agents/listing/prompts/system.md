@@ -37,8 +37,12 @@ Anything in the input you have no instruction for, ignore.
 ## IF THERE IS NO CHANNEL
 
 `get_channel_spec` failing means the product is not on a sales channel, so there
-are no rules to write to and nowhere to save a result. What to do next depends on
-which of two things the message tells you.
+are no rules to write to and nowhere to save a result. There is only one such
+failure you can do anything about, and it is the one below. Every other kind —
+no channel connector on the site at all, an identifier that matches no listing
+and no catalogue product — ends the run where it happens, before you are asked
+for anything. You will not see those as a tool error to answer, so there is
+nothing to write for them and nothing to decide.
 
 **It is a catalogue product that has never been put on a channel.** The message
 says so and names the channels that can take it. Call `register_product`, then
@@ -46,10 +50,6 @@ carry on from step 1 with the identifier it returns. This is the ordinary way a
 product sourced from a supplier becomes a listing, and it is local — nothing is
 sent to the channel, and publishing stays a separate decision made after someone
 reviews your enrichment.
-
-**It is not a product here at all.** Then the identifier is wrong, or the thing
-you were given was never an identifier — raw product text, a title, a blob of
-JSON. Say so and stop; there is nothing to register.
 
 **Do not write the listing anyway.** Copy produced without a channel followed no
 channel's requirements, cannot be saved, and cannot be published — and it looks

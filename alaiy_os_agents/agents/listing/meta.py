@@ -92,7 +92,7 @@ INPUT_SCHEMA = {
 	"properties": {
 		"product": {
 			"type": "string",
-			"description": "The product identifier to write a listing for — a seller SKU, an item code, whatever the channel keys its products by.",
+			"description": "The product identifier to write a listing for — a seller SKU, an item code, whatever the channel keys its products by. The code ALONE: it is looked up as a primary key, so a product name, or a name with the code inside it like 'Bumper Fastener Kit (SKU: 4125037034808)', matches nothing and ends the run.",
 		},
 		"channel": {
 			"type": "string",
