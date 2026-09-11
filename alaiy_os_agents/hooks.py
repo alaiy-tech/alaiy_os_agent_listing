@@ -30,6 +30,24 @@ after_install = ["alaiy_os_agents.registry.sync"]
 after_migrate = ["alaiy_os_agents.registry.sync"]
 
 # ---------------------------------------------------------------------------
+# Ask Alaiy
+# ---------------------------------------------------------------------------
+# chat_tool_sources: contributes `listing_bulk_enrich_from_csv`, which turns an
+# attached spreadsheet into one bulk enrich batch (agents/listing/chat_tools.py ->
+# api.bulk_enrich -> bulk.py). The chat's own listing route is `run_agent`, which
+# enriches a single product; without this, a model handed a fifty-row sheet has no
+# correct move and improvises one from the handful of rows its file-reader previews.
+# This tool reads the file server-side, so the rows never pass through the model and
+# cannot be invented.
+#
+# Withheld from a user who cannot create an OS Agent Run, and from a site with the
+# listing agent disabled. That second gate is the source's own: core's seam filters
+# only `OS Agent Tool` rows on `is_enabled`, and a `chat_tool_sources` contribution
+# goes straight through — so without it, disabling the agent would stop being a
+# complete off switch. See chat_tools.source().
+chat_tool_sources = ["alaiy_os_agents.agents.listing.chat_tools.source"]
+
+# ---------------------------------------------------------------------------
 # Uninstallation
 # ---------------------------------------------------------------------------
 # Remove every agent's registry row. OS Agent Run history is kept.
